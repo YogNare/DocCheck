@@ -2,10 +2,12 @@ from dataclasses import field, dataclass
 
 import pdf_line
 
-@dataclass
+@dataclass(eq=False)
 class PDFPage():
 
     number: int
+    width: int
+    height: int
 
     header: pdf_line.PDFLine | None = None
     footer: pdf_line.PDFLine | None = None
@@ -14,10 +16,8 @@ class PDFPage():
 
     def add_line(self, new_line: pdf_line.PDFLine) -> None:
         self.lines.append(new_line)
+        new_line.page = self
         return
 
-    def get_lines(self) -> list[pdf_line.PDFLine]:
-        return self.lines
-
     def __str__(self) -> str:
-        return "".join(f"{line.get_val()}\n" for line in self.lines)
+        return f'{str(self.header)}\n-\n' + "".join(f"{str(line)}\n" for line in self.lines) + f'-\n{self.footer}\n'

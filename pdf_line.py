@@ -1,46 +1,25 @@
+from dataclasses import dataclass, field
 from typing import override
+
+import pdf_object
 import pdf_page
 import pdf_paragraph
 
 
-class PDFLine():
-    x1: float
-    y1: float
-    x2: float
-    y2: float
-
-    position: pdf_paragraph.PDFParagraph
-    page: pdf_page.PDFPage
-
-    value: str
-
+@dataclass(eq=False)
+class PDFLine(pdf_object.PDFObject):
+    text: str
     font: str
     font_size: int
 
-    def remove_enter(line: str) -> str:
-        return line.replace("\n", "")
+    page:  "pdf_page.PDFPage | None" = field(repr=False)
 
-    def __init__(self, line: tuple):
-        (self.x1, self.y1, self.x2, self.y2, self.value, self.position, self.page) = line
-        self.value = PDFLine.remove_enter(self.value)
-        return
+    position:  "pdf_paragraph.PDFParagraph | None" = field(default=None, repr=False)
 
-    def add_to_line(self, upd_line: str) -> None:
-        self.value += upd_line
-        self.value = PDFLine.remove_enter(self.value)
-        return
-
-    def get_val(self) -> str:
-        return self.value
-
-    def set_font(self, font: str) -> None:
-        self.font = font
-        return
-
-    def set_font_size(self, font_size: int) -> None:
-        self.font_size = font_size
-        return
+    @staticmethod
+    def _clean(text: str) -> str:
+        return text.replace("\n", "")
 
     @override
     def __str__(self) -> str:
-        return f"line: {self.position} - {self.x1} | {self.value} | {self.x2}"
+        return f"({self.x0:.2f}, {self.y0:.2f}), ({self.x1:.2f}, {self.y1:.2f}) | {self.text} - font={self.font}, font_size={self.font_size}"
