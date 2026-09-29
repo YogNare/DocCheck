@@ -1,22 +1,58 @@
-from dataclasses import field
-from os import linesep
+from __future__ import annotations
 
-import pdf_line
+import statistics
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, override
 
-class PDFParagraph():
-    lines: list[pdf_line.PDFLine] = field(default_factory=list)
+from settings import Kind
+
+if TYPE_CHECKING:
+    from pdf_line import PDFLine
+    from pdf_page import PDFPage
+
+
+@dataclass(eq=False)
+class PDFParagraph:
     number: int
+    kind: Kind = Kind.BODY
+    lines: list[PDFLine] = field(default_factory=list)
+    page: PDFPage | None = field(default=None, repr=False)
 
-    def __init__(self, num: int):
-        self.number = num
-        return
-
-    def add_line(self, new_line: pdf_line.PDFLine) -> None:
+    def add_line(self, new_line: PDFLine) -> None:
         self.lines.append(new_line)
-        return
+        new_line.paragraph = self
 
-    def get_number(self) -> int:
-        return self.number
+    @property
+    def first_line(self) -> PDFLine:
+        return self.lines[0]
 
-    def get_lines(self) -> list[pdf_line.PDFLine]:
-        return self.lines
+    @property
+    def text(self) -> str:
+        return " ".join(line.text for line in self.lines)
+
+    @property
+    def x0(self) -> float:
+        return min(line.x0 for line in self.lines)
+
+    @property
+    def x1(self) -> float:
+        return max(line.x1 for line in self.lines)
+
+    @property
+    def y0(self) -> float:
+        return min(line.y0 for line in self.lines)
+
+    @property
+    def y1(self) -> float:
+        return max(line.y1 for line in self.lines)
+
+    def pitch(self) -> float | None:
+        """Медианное расстояние между базовыми линиями соседних строк (None, если строка одна)."""
+        if len(self.lines) < 2:
+            return None
+        return statistics.median(b.baseline - a.baseline for a, b in zip(self.lines, self.lines[1:]))
+
+    @override
+    def __str__(self) -> str:
+        head = f"#{self.number} <{self.kind.value}>"
+        return head + "".join(f"\n    {line}" for line in self.lines)

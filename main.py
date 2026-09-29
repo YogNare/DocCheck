@@ -1,23 +1,29 @@
-import pymupdf
-import pdf_book
+import argparse
+from pathlib import Path
 
-def load_pages(source: str) -> pdf_book.PDFBook:
-    new_book = pdf_book.PDFBook()
-
-def main():
-    doc = pymupdf.open("samples/FishText.pdf")
-    book: list[pdf_page.PDFPage] = []
-    num: int = 0
-    for page in doc:
-        book.append(pdf_page.PDFPage(len(book)))
-        for line in page.get_text_blocks():
-            book[-1].add_line(pdf_line.PDFLine(line))
-
-        num += 1
+from checker import GostChecker, format_report
+from pdf_book import PDFBook
+from settings import GostSettings
 
 
-    for page in book:
-        print(page)
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Проверка оформления PDF по ГОСТ")
+    parser.add_argument("pdf", nargs="?", default="samples/PDFExample 1.pdf", help="путь к PDF")
+    parser.add_argument("-o", "--out", default="samples/report.txt", help="куда сохранить отчёт")
+    parser.add_argument("--dump", default=None, help="сохранить разбор документа (страницы/абзацы/строки) для отладки")
+    parser.add_argument("--full", action="store_true", help="не сворачивать одинаковые замечания")
+    args = parser.parse_args()
+
+    settings = GostSettings()  # все настройки оформления: settings.py
+    book = PDFBook(args.pdf, settings)
+
+    if args.dump:
+        Path(args.dump).write_text(str(book), encoding="utf-8")
+
+    report = format_report(GostChecker(book).check(), group=not args.full)
+    Path(args.out).write_text(report, encoding="utf-8")
+    print(report)
+
 
 if __name__ == "__main__":
     main()
