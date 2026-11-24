@@ -5,62 +5,74 @@ import pdf_line
 import pdf_page
 import pdf_paragraph
 
+# fixme: временная заглушка
+k = 0.35
 
 @dataclass
 class PDFBook:
 
-    # read_line =
+    lines: list[pdf_line.PDFLine] = field(default_factory=list)
 
     def __init__(self, path: str):
-        self.pages = self._read_pages(path)
+        self.pages: list[pdf_page.PDFPage] = []
+        self.lines = list()
+        self._read_pages(path)
 
-    @property
-    def get_all_lines(self) -> list["pdf_line.PDFLine"]:
-        return [l for p in self.pages for l in p.lines]
-
-    @staticmethod
-    def _read_pages(path: str) -> list["pdf_page.PDFPage"]:
+    def _read_pages(self, path: str) -> None:
         import pymupdf
         doc = pymupdf.open(path)
-        pages = []
+        lines_start: int = 0
         for page in doc:
-            new_page = pdf_page.PDFPage(len(pages), page.mediabox_size[0], page.mediabox_size[1])
+            prev = {"origin": 0, "size": 0}
             blocks = page.get_text("dict")["blocks"]
             for block in blocks:
                 if block["type"] == 0:
                     for line in block["lines"]:
-                        font: str = line["spans"][0]['font']
-                        font_size: int = line["spans"][0]['size']
-                        x0: float = line["spans"][0]['bbox'][0]
-                        y0: float = line["spans"][0]['bbox'][1]
-                        x1: float = line["spans"][-1]['bbox'][2]
-                        y1: float = line["spans"][-1]['bbox'][3]
-                        text: str = ""
                         for span in line["spans"]:
-                            if font != span['font']:
-                                pass
-                            if font_size != span['size']:
-                                pass
-                            text += span['text']
-                        line = pdf_line.PDFLine(x0, y0, x1, y1, text, font, font_size, new_page)
-                        if y0 < 40:
-                            new_page.header = line
-                        elif y0 > 780:
-                            new_page.footer = line
-                        else:
-                            new_page.add_line(line)
+                            # todo: проверить валидность формулы
+                            if abs(span["origin"][1] - prev["origin"]) < k * max(span["size"], prev["size"]):
+                                self.lines[-1].add_span(span)
+                            else:
+                                new_line: pdf_line.PDFLine = pdf_line.PDFLine()
+                                new_line.add_span(span)
+                                if not (len(new_line.spans) > 0):
+                                    continue
+                                self.lines.append(new_line)
 
-            pages.append(new_page)
+                            prev["origin"] = span["origin"][1]
+                            prev["size"] = span["size"]
 
-        return pages
+
+            self.pages.append(
+                pdf_page.PDFPage(
+                    len(self.pages) + 4,
+                    page.mediabox_size[0],
+                    page.mediabox_size[1],
+                    self.lines,
+                    range(lines_start, len(self.lines))
+                )
+            )
+            lines_start = len(self.lines)
+
+        return
 
     def _split_paragraphs(self) -> None:
         paragraphs = []
+        space: float = self.standard_space
+        prev_line: "pdf_line.PDFLine | None" = None
         # for line in self.get_all_lines:
-        #     if
+        #     if line.x0 > first_space and (prev_line == None or prev_line.text[-1] in [".", "...", ""])
 
-        pass
+    @property
+    def standard_space(self) -> float:
+        count = 0
+        res = 0
+        for i in self.lines:
+            res += i.x0
+            count += 1
+
+        return res/count
 
     @override
     def __str__(self) -> str:
-        return "".join(f"--------\n{str(page)}" for page in self.pages)
+        return "".join(f"{page}\n" for page in self.pages)

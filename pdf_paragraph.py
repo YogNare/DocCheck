@@ -1,15 +1,12 @@
-from dataclasses import field
+from dataclasses import field, dataclass
 from os import linesep
 
 import pdf_line
 
-class PDFParagraph():
-    lines: list[pdf_line.PDFLine] = field(default_factory=list)
+@dataclass
+class PDFParagraph:
     number: int
-
-    def __init__(self, num: int):
-        self.number = num
-        return
+    lines: list[pdf_line.PDFLine] = field(default_factory=list)
 
     def add_line(self, new_line: pdf_line.PDFLine) -> None:
         self.lines.append(new_line)
